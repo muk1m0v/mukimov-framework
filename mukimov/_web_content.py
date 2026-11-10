@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 import re
-import runpy
 
 ALIAS_PATTERN = r"[\w-]+"
 _PREFIX = re.compile(r"/(?:[\w-]+/)*[\w-]+/?")
@@ -26,14 +25,12 @@ def asset_parts(name: str) -> list[str]:
     return parts
 
 
-def load_content(root: Path):
+def load_content(root: Path, settings):
     """Return URL mounts and the optional alias table for the application."""
     mounts = {"/static/": (root / "static", None)}
-    path = root / "conf.py"
-    if not path.is_file():
+    if settings is None:
         return mounts, None
 
-    settings = runpy.run_path(str(path))
     enabled = settings.get("ALL_CONTENT_STATIC", settings.get("ALL_CONTENT", True))
     if type(enabled) is not bool:
         raise ValueError("ALL_CONTENT_STATIC in conf.py must be True or False.")

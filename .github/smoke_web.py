@@ -60,7 +60,10 @@ def main():
         shutil.copytree(example, project, ignore=shutil.ignore_patterns("__pycache__"))
         subprocess.run([sys.executable, "-m", "mukimov", "startweb", "starter"],
                        cwd=folder, check=True)
-        assert (Path(folder) / "starter" / "conf.py").is_file()
+        starter = Path(folder) / "starter"
+        assert (starter / "app.py").is_file()
+        assert (starter / "core" / "conf.py").is_file()
+        assert (starter / "templates" / "index.html").read_bytes() == b""
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]

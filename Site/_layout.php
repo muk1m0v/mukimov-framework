@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const SITE_VERSION = '0.3.5';
+const SITE_VERSION = '0.3.6';
 const SITE_REPO = 'https://github.com/muk1m0v/mukimov-framework';
 const SITE_PYPI = 'https://pypi.org/project/mukimov/';
 const SITE_PAGES = [

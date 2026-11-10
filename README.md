@@ -29,7 +29,7 @@ python -m mukimov --version
 
 ### Готовый проект с CSS, JavaScript и картинкой
 
-В версии 0.3.5 можно создать сайт одной командой. После установки библиотеки из папки, где нужен проект, запусти:
+Из папки, где нужен проект, запусти:
 
 ```console
 mukimov-startweb my_site
@@ -37,9 +37,20 @@ cd my_site
 python app.py
 ```
 
-Если команда недоступна в `PATH`, используй `python -m mukimov startweb my_site`. Генератор создаёт `app.py`, `conf.py`, HTML-шаблон и папки `content/css`, `content/js` и `content/img`. Сайт запускается на [127.0.0.1:8000](http://127.0.0.1:8000/).
+Если PowerShell блокирует `mukimov-startweb.exe` или команда недоступна в `PATH`, используй `python -m mukimov startweb my_site`. Сайт запускается на [127.0.0.1:8000](http://127.0.0.1:8000/).
 
-В `conf.py` параметр `ALL_CONTENT_STATIC = True` включает короткие имена. Например, `"style.css": "main_style"` в `CSS_SETTING` позволяет написать:
+В новом шаблоне проекта `app.py` лежит в корне, настройки находятся в `core/conf.py`, а `templates/index.html` и папки `content/css`, `content/js` и `content/img` изначально пустые.
+
+```python
+from mukimov.dirs import BASE_DIR
+
+DEBUG = True
+HTML_TEMPLATES = [BASE_DIR / "templates"]
+```
+
+Пока главная пустая, `DEBUG = True` показывает встроенную стартовую страницу. Стандартные страницы ошибок тоже объясняют, почему включён этот режим. Когда добавишь свой HTML, главная покажет его. С `DEBUG = False` встроенная стартовая страница и подсказки об ошибках отключаются.
+
+В `core/conf.py` параметр `ALL_CONTENT_STATIC = True` включает короткие имена. Добавь свои файлы в соответствующие папки и укажи их имена в настройках. Например, `"style.css": "main_style"` в `CSS_SETTING` позволяет написать:
 
 ```html
 <link rel="stylesheet" href="{$ 'main_style' $}">

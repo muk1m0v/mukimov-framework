@@ -10,11 +10,9 @@ import sys
 from .cli import _ensure_utf8
 
 
-_DIRECTORIES = ("templates", "content", "content/css", "content/js", "content/img")
+_DIRECTORIES = ("core", "templates", "content", "content/css", "content/js", "content/img")
 _FILES = {
     "app.py": """
-        from pathlib import Path
-
         from mukimov.web import App, render_template
 
         app = App()
@@ -22,67 +20,24 @@ _FILES = {
 
         @app.route("/")
         def home():
-            return render_template("index.html", title=Path(__file__).resolve().parent.name)
+            return render_template("index.html")
 
 
         if __name__ == "__main__":
             app.run()
     """,
-    "conf.py": """
+    "core/conf.py": """
+        from mukimov.dirs import BASE_DIR
+
+        DEBUG = True
+        HTML_TEMPLATES = [BASE_DIR / "templates"]
         ALL_CONTENT_STATIC = True
 
-        CSS_SETTING = {
-            "STYLE_MAIN_PATH": "/content/css/",
-            "style.css": "main_style",
-        }
-
-        JAVASCRIPT_SETTING = {
-            "SCRIPT_MAIN_PATH": "/content/js/",
-            "script.js": "my_script",
-        }
-
-        IMAGE_SETTING = {
-            "IMAGE_MAIN_PATH": "/content/img/",
-            "example.svg": "example_photo",
-        }
+        CSS_SETTING = {"STYLE_MAIN_PATH": "/content/css/"}
+        JAVASCRIPT_SETTING = {"SCRIPT_MAIN_PATH": "/content/js/"}
+        IMAGE_SETTING = {"IMAGE_MAIN_PATH": "/content/img/"}
     """,
-    "templates/index.html": """
-        <!doctype html>
-        <html lang="ru">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>{{ title }}</title>
-            <link rel="stylesheet" href="{$ 'main_style' $}">
-            <script src="{$ 'my_script' $}" defer></script>
-        </head>
-        <body>
-            <main>
-                <img src="{$ 'example_photo' $}" width="48" height="48" alt="">
-                <h1>{{ title }}</h1>
-                <p>Сайт работает. Пути к CSS, JavaScript и изображению заданы в conf.py.</p>
-                <button type="button" id="hello">Проверить JavaScript</button>
-                <p id="status" role="status"></p>
-            </main>
-        </body>
-        </html>
-    """,
-    "content/css/style.css": """
-        body { margin: 0; color: #111; background: #fff; font: 1rem/1.6 system-ui, sans-serif; }
-        main { max-width: 40rem; margin: 4rem auto; padding: 0 1rem; }
-        button { font: inherit; color: #fff; background: #111; border: 0; padding: .5rem 1rem; cursor: pointer; }
-    """,
-    "content/js/script.js": """
-        document.querySelector("#hello").addEventListener("click", () => {
-            document.querySelector("#status").textContent = "JavaScript работает!";
-        });
-    """,
-    "content/img/example.svg": """
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-            <rect width="48" height="48" rx="8" fill="#111"/>
-            <path d="m13 16 8 8-8 8m12 0h10" fill="none" stroke="#fff" stroke-width="3"/>
-        </svg>
-    """,
+    "templates/index.html": "",
 }
 
 

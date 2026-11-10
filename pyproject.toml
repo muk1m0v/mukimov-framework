@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mukimov"
-version = "0.3.5"
+version = "0.3.6"
 description = "Tools for small websites, password hashing, terminal output and environment settings"
 readme = "README.md"
 requires-python = ">=3.8"

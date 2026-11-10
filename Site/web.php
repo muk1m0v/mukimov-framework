@@ -6,7 +6,14 @@ docsStart('web', 'Модули', ['setup' => 'Первый сайт', 'static' =
 ?>
 <section id="setup">
     <h2>Первый сайт</h2>
-    <p>В версии 0.3.5 можно создать рабочий проект командой <code>mukimov-startweb my_site</code>. Если предпочитаешь создать файлы вручную, начни с <code>app.py</code> и папки <code>templates/</code> рядом с ним.</p>
+    <p>Создай проект командой <code>mukimov-startweb my_site</code> или <code>python -m mukimov startweb my_site</code>. В версии 0.3.6 генератор оставляет <code>app.py</code> в корне сайта, записывает настройки в <code>core/conf.py</code> и создаёт пустой <code>templates/index.html</code>.</p>
+    <?php snippet('Python · core/conf.py', <<<'PY'
+from mukimov.dirs import BASE_DIR
+
+DEBUG = True
+HTML_TEMPLATES = [BASE_DIR / "templates"]
+PY); ?>
+    <p>Пока главная пустая, <code>DEBUG = True</code> показывает встроенную стартовую страницу. Стандартные страницы ошибок тоже сообщают о включённом режиме. Чтобы убрать эти подсказки, укажи <code>DEBUG = False</code>.</p>
     <?php snippet('Терминал', 'python -m pip install --upgrade mukimov');
     snippet('Python · app.py', <<<'PY'
 from mukimov.web import App, render_template
@@ -32,12 +39,12 @@ HTML);
     <?php snippet('Вывод при запуске', <<<'TEXT'
 Сервер запущен: http://127.0.0.1:8017
 Чтобы остановить сервер, используйте комбинацию: Ctrl + C
-Mukimov Web Control - v0.3.5
+Mukimov Web Control - v0.3.6
 TEXT); ?>
 </section>
 <section id="static">
     <h2>CSS, JavaScript и картинки</h2>
-    <p>Положи файлы в <code>static/</code> рядом с <code>app.py</code> и подключи их по адресам, которые начинаются с <code>/static/</code>.</p>
+    <p>В сгенерированном проекте для ресурсов есть пустые папки <code>content/css/</code>, <code>content/js/</code> и <code>content/img/</code>. Добавь свои файлы и подключи их по адресам <code>/content/css/...</code>, <code>/content/js/...</code> и <code>/content/img/...</code>. Папка <code>static/</code> по-прежнему работает для приложений, которые используют адреса <code>/static/</code>.</p>
     <?php snippet('HTML', <<<'HTML'
 <link rel="stylesheet" href="/static/css/style.css">
 <script src="/static/js/app.js" defer></script>

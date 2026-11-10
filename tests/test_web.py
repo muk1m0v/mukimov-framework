@@ -195,26 +195,78 @@ class TestWeb(TestCase):
             self.skipTest("The platform does not permit creating symlinks here")
         self.assertEqual(self.call("/static/escape.txt")[0], 404)
 
-    def test_scaffold_serves_css_javascript_and_image_through_aliases(self):
+    def test_scaffold_uses_debug_pages_until_a_template_is_written(self):
         with patch("mukimov._startweb.Path.cwd", return_value=self.root), \
              redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             self.assertEqual(startweb(["demo-site"]), 0)
             self.assertEqual(startweb(["demo-site"]), 1)
 
         project = self.root / "demo-site"
+        configuration = project / "core" / "conf.py"
+        self.assertEqual(run_path(str(configuration))["BASE_DIR"], project.resolve())
+        index = project / "templates" / "index.html"
+        self.assertEqual(index.read_bytes(), b"")
+        for category in ("css", "js", "img"):
+            self.assertEqual(list((project / "content" / category).iterdir()), [])
         self.app = run_path(str(project / "app.py"))["app"]
         status, _, page = self.call()
         self.assertEqual(status, 200)
-        for path, mime in (("/content/css/style.css", "text/css"),
-                           ("/content/js/script.js", "text/javascript"),
-                           ("/content/img/example.svg", "image/svg+xml")):
-            self.assertIn(path.encode(), page)
-            status, headers, _ = self.call(path)
-            self.assertEqual((status, headers["Content-Type"]), (200, mime))
-        self.assertNotIn(b"{$", page)
+        self.assertIn("Сайт запущен".encode(), page)
+        self.assertIn(b"DEBUG = True", page)
+        index.unlink()
+        self.assertIn(b"DEBUG = True", self.call()[2])
+
+        index.write_text("<h1>My website</h1>", encoding="utf-8")
+        self.assertEqual(self.call()[2], b"<h1>My website</h1>")
+        (project / "content/css/style.css").write_text("body {}", encoding="utf-8")
+        status, headers, body = self.call("/content/css/style.css")
+        self.assertEqual((status, headers["Content-Type"], body), (200, "text/css", b"body {}"))
         (project / "content/css/private.txt").write_text("private", encoding="utf-8")
         self.assertEqual(self.call("/content/css/private.txt")[0], 404)
-        self.assertEqual(self.call("/conf.py")[0], 404)
+        self.assertEqual(self.call("/core/conf.py")[0], 404)
+
+    def test_debug_error_pages_preserve_status_and_hide_exception_details(self):
+        (self.root / "conf.py").write_text("DEBUG = True\n", encoding="utf-8")
+        self.app = App(root=self.root)
+        self.app.route("/bad")(lambda: abort(400))
+
+        @self.app.route("/broken")
+        def broken():
+            raise RuntimeError("private details")
+
+        for path, code in (("/bad", 400), ("/missing", 404), ("/broken", 500)):
+            status, _, body = self.call(path)
+            self.assertEqual(status, code)
+            self.assertIn(b"DEBUG = True", body)
+            self.assertNotIn(b"private details", body)
+
+        (self.root / "conf.py").write_text("DEBUG = False\n", encoding="utf-8")
+        self.app = App(root=self.root)
+        self.app.route("/")(lambda: render_template("index.html"))
+        (self.root / "templates").mkdir()
+        (self.root / "templates" / "index.html").touch()
+        self.assertEqual(self.call()[2], b"")
+        status, _, body = self.call("/missing")
+        self.assertEqual(status, 404)
+        self.assertNotIn(b"DEBUG", body)
+
+    def test_core_config_uses_project_root_and_custom_template_search_order(self):
+        core = self.root / "core"
+        core.mkdir()
+        (self.root / "conf.py").write_text("raise RuntimeError('old config')", encoding="utf-8")
+        (core / "conf.py").write_text(
+            'from mukimov.dirs import BASE_DIR\n'
+            'HTML_TEMPLATES = [BASE_DIR / "pages", "fallback"]\n',
+            encoding="utf-8",
+        )
+        for folder, content in (("pages", "Primary"), ("fallback", "Fallback")):
+            (self.root / folder).mkdir()
+            (self.root / folder / "index.html").write_text(content, encoding="utf-8")
+        self.app = App(root=self.root)
+        self.app.route("/")(lambda: render_template("index.html"))
+        self.assertEqual(self.call()[2], b"Primary")
+        (self.root / "pages" / "index.html").unlink()
+        self.assertEqual(self.call()[2], b"Fallback")
 
     def test_config_can_use_a_custom_path_or_disable_aliases(self):
         configuration = self.root / "conf.py"

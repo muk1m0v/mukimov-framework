@@ -17,10 +17,11 @@ import socket
 import sys
 import traceback
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 from . import __version__
 from .color import blue, green, red
+from .dirs import _load_settings
 from ._web_content import asset_parts, load_content
 from ._web_reload import BIND_FAILED, WORKER_ENV, supervise
 from ._web_templates import ControlTags
@@ -138,8 +139,21 @@ request = _RequestProxy()
 
 
 def render_template(template_name: str, /, **context) -> str:
-    """Render a template from the current app's templates directory."""
-    return _current_request().app._templates.get_template(template_name).render(**context)
+    """Render a template from the current app's configured template directories."""
+    current = _current_request()
+    app = current.app
+    is_home = template_name == "index.html" and current.environ["PATH_INFO"] in ("", "/")
+    try:
+        template = app._templates.get_template(template_name)
+    except TemplateNotFound as error:
+        if not (app._debug and is_home and error.name == template_name):
+            raise
+        page = ""
+    else:
+        page = template.render(**context)
+    if app._debug and is_home and not page.strip():
+        return app._debug_page("Сайт запущен", "Добавьте содержимое в index.html, чтобы показать свою страницу.")
+    return page
 
 
 def _route_methods(methods) -> tuple[str, ...]:
@@ -158,9 +172,20 @@ class App:
             root = Path(caller_file).resolve().parent if caller_file else Path.cwd()
         root = Path(root).resolve()
         self._root = root
-        self._mounts, aliases = load_content(root)
+        settings = _load_settings(root)
+        self._mounts, aliases = load_content(root, settings)
+        config = settings or {}
+        self._debug = config.get("DEBUG", settings is not None)
+        if type(self._debug) is not bool:
+            raise ValueError("DEBUG in conf.py must be True or False.")
+        template_dirs = config.get("HTML_TEMPLATES", [root / "templates"])
+        if not isinstance(template_dirs, (list, tuple)) or not all(
+            isinstance(path, (str, os.PathLike)) for path in template_dirs
+        ):
+            raise ValueError("HTML_TEMPLATES in conf.py must be a list of paths.")
         self._templates = Environment(
-            loader=FileSystemLoader(root / "templates"), autoescape=True, extensions=[ControlTags]
+            loader=FileSystemLoader([root / path for path in template_dirs]),
+            autoescape=True, extensions=[ControlTags]
         )
         if aliases is not None:
             self._templates.globals["mukimov_asset_url"] = aliases.__getitem__
@@ -268,8 +293,36 @@ class App:
         return result.encode("utf-8"), _HTML
 
     @staticmethod
-    def _default_error(status: HTTPStatus) -> bytes:
+    def _debug_page(title: str, message: str) -> str:
+        # Both arguments come from Mukimov's built-in pages, never from a request.
+        return f"""<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} | Mukimov Web</title>
+<style>
+body {{ margin: 0; color: #111; background: #fff; font: 1rem/1.6 system-ui, sans-serif; }}
+main {{ max-width: 40rem; margin: 10vh auto; padding: 0 1.25rem; }}
+footer {{ margin-top: 2rem; border-top: 1px solid #ddd; padding-top: 1rem; }}
+</style>
+<main>
+<p>Mukimov Web</p>
+<h1>{title}</h1>
+<p>{message}</p>
+<footer>Вы видите эту страницу, потому что в <code>conf.py</code> включён <code>DEBUG = True</code>.</footer>
+</main>
+</html>"""
+
+    def _default_error(self, status: HTTPStatus) -> bytes:
         title = f"{status.value} {status.phrase}"
+        if self._debug:
+            message = {
+                400: "Проверьте данные запроса или поля формы.",
+                404: "Проверьте адрес и маршруты в app.py.",
+                405: "Проверьте, разрешён ли этот метод для маршрута.",
+                500: "Подробности ошибки записаны в консоль сервера.",
+            }.get(status, "Проверьте настройки маршрута и запрос.")
+            return self._debug_page(title, message).encode("utf-8")
         return f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'.encode("utf-8")
 
     def _response(self, environ: dict) -> tuple[HTTPStatus, bytes, str, tuple]:
