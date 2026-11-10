@@ -1,6 +1,7 @@
 """Tests for mukimov core logic (no real terminal needed)."""
 
 import inspect
+from importlib import import_module
 import io
 import sys
 import unittest
@@ -118,7 +119,8 @@ class TestMask(unittest.TestCase):
 class TestWindowsEcho(unittest.TestCase):
     def _run(self, keys, prompt="Password: ", mask="*"):
         out = io.StringIO()
-        with mock.patch("mukimov.stars.console_keys", return_value=nullcontext(iter(keys))):
+        with mock.patch.object(import_module("mukimov.stars"), "console_keys",
+                               return_value=nullcontext(iter(keys))):
             with mock.patch.object(sys, "stdout", out):
                 result = _stars_windows(prompt, mask)
         return result, out.getvalue()

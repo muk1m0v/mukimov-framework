@@ -1,6 +1,7 @@
 """Tests for mukimov.color (12 ANSI colors)."""
 
 import unittest
+from importlib import import_module
 from unittest import mock
 
 import mukimov.color as color_mod
@@ -139,7 +140,7 @@ class TestCompatibility(unittest.TestCase):
     def test_stars_compatibility(self):
         from mukimov import stars
 
-        with mock.patch("mukimov.stars.stars", return_value="secret") as mstars:
+        with mock.patch.object(import_module("mukimov.stars"), "stars", return_value="secret") as mstars:
             result = mstars(green("Password: "))
             self.assertEqual(result, "secret")
             called_prompt = mstars.call_args[0][0]

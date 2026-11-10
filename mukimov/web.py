@@ -6,6 +6,7 @@ from contextvars import ContextVar
 from functools import cached_property
 from http import HTTPStatus
 from pathlib import Path
+from socketserver import TCPServer
 from typing import NamedTuple
 from typing import NoReturn
 from urllib.parse import parse_qsl
@@ -39,7 +40,10 @@ class _LocalServer(WSGIServer):
             self.allow_reuse_address = False
             if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
                 self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
-        super().server_bind()
+        # This server only binds to loopback. Avoid a reverse DNS lookup at startup.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+        self.setup_environ()
 
 
 class _HTTPError(Exception):

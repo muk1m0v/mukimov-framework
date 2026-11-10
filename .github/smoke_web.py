@@ -27,15 +27,17 @@ def fetch(port, path, method="GET", form=None):
 
 def wait_for_page(process, port, text):
     deadline = time.monotonic() + 20
+    last_result = "No response yet"
     while time.monotonic() < deadline and process.poll() is None:
         try:
             status, _, body = fetch(port, "/")
             if status == 200 and text in body:
                 return
-        except (OSError, HTTPException):
-            pass
+            last_result = f"HTTP {status}"
+        except (OSError, HTTPException) as error:
+            last_result = str(error)
         time.sleep(0.1)
-    raise AssertionError(f"The example did not serve {text!r}")
+    raise AssertionError(f"The example did not serve {text!r}: {last_result}; exit={process.poll()}")
 
 
 def stop(process):
