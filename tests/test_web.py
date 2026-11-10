@@ -196,12 +196,13 @@ class TestWeb(TestCase):
         self.assertEqual(self.call("/static/escape.txt")[0], 404)
 
     def test_scaffold_uses_debug_pages_until_a_template_is_written(self):
-        with patch("mukimov._startweb.Path.cwd", return_value=self.root), \
-             redirect_stdout(StringIO()), redirect_stderr(StringIO()):
-            self.assertEqual(startweb(["demo-site"]), 0)
-            self.assertEqual(startweb(["demo-site"]), 1)
-
         project = self.root / "demo-site"
+        project.mkdir()
+        with patch("mukimov._startweb.Path.cwd", return_value=project), \
+             redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            self.assertEqual(startweb([]), 0)
+            self.assertEqual(startweb([]), 1)
+
         configuration = project / "core" / "conf.py"
         self.assertEqual(run_path(str(configuration))["BASE_DIR"], project.resolve())
         index = project / "templates" / "index.html"
@@ -224,6 +225,20 @@ class TestWeb(TestCase):
         (project / "content/css/private.txt").write_text("private", encoding="utf-8")
         self.assertEqual(self.call("/content/css/private.txt")[0], 404)
         self.assertEqual(self.call("/core/conf.py")[0], 404)
+
+    def test_startweb_rejects_core_as_a_project_directory(self):
+        with patch("mukimov._startweb.Path.cwd", return_value=self.root), redirect_stderr(StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                startweb(["core"])
+            self.assertEqual(error.exception.code, 2)
+        core = self.root / "core"
+        self.assertFalse(core.exists())
+        core.mkdir()
+        with patch("mukimov._startweb.Path.cwd", return_value=core), redirect_stderr(StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                startweb([])
+            self.assertEqual(error.exception.code, 2)
+        self.assertEqual(list(core.iterdir()), [])
 
     def test_debug_error_pages_preserve_status_and_hide_exception_details(self):
         (self.root / "conf.py").write_text("DEBUG = True\n", encoding="utf-8")

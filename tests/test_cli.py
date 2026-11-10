@@ -67,7 +67,17 @@ class TestUpdateCmd(unittest.TestCase):
         # Same interpreter: sys.executable -m pip ...
         cmd = mrun.call_args[0][0]
         self.assertEqual(cmd[:3], [sys.executable, "-m", "pip"])
-        self.assertIn("mukimov", cmd)
+        self.assertIn("mukimov==9.9.9", cmd)
+
+    def test_update_does_not_report_success_when_pip_leaves_old_version(self):
+        fake_proc = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(cli, "get_latest_version", return_value="9.9.9"), \
+                mock.patch.object(cli.subprocess, "run", return_value=fake_proc), \
+                mock.patch("importlib.metadata.version", return_value=__version__):
+            code, out, err = run_cli(["update"])
+        self.assertEqual(code, 1)
+        self.assertNotIn("Updated", out)
+        self.assertIn(f"installed version is {__version__}", err)
 
     def test_update_network_error(self):
         with mock.patch.object(

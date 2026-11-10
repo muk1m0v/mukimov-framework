@@ -58,17 +58,18 @@ def main():
     with TemporaryDirectory() as folder:
         project = Path(folder) / "web"
         shutil.copytree(example, project, ignore=shutil.ignore_patterns("__pycache__"))
-        subprocess.run([sys.executable, "-m", "mukimov", "startweb", "starter"],
-                       cwd=folder, check=True)
         starter = Path(folder) / "starter"
+        starter.mkdir()
+        subprocess.run([sys.executable, "-m", "mukimov", "startweb"],
+                       cwd=starter, check=True)
         assert (starter / "app.py").is_file()
         assert (starter / "core" / "conf.py").is_file()
         assert (starter / "templates" / "index.html").read_bytes() == b""
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
-        environment = dict(os.environ, MUKIMOV_WEB_PORT=str(port))
-        with subprocess.Popen([sys.executable, "-X", "utf8", "app.py"],
+        environment = dict(os.environ, MUKIMOV_WEB_PORT=str(port), PYTHONIOENCODING="cp1252")
+        with subprocess.Popen([sys.executable, "app.py"],
                               cwd=project, env=environment, start_new_session=os.name != "nt") as process:
             try:
                 wait_for_page(process, port, "Мукимов")

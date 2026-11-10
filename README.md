@@ -32,12 +32,11 @@ python -m mukimov --version
 Из папки, где нужен проект, запусти:
 
 ```console
-mukimov-startweb my_site
-cd my_site
+python -m mukimov startweb
 python app.py
 ```
 
-Если PowerShell блокирует `mukimov-startweb.exe` или команда недоступна в `PATH`, используй `python -m mukimov startweb my_site`. Сайт запускается на [127.0.0.1:8000](http://127.0.0.1:8000/).
+Без имени генератор использует текущую папку. Запускай его из корня проекта. Чтобы создать новый каталог, можно явно передать имя, например `python -m mukimov startweb my_site`. Сайт запускается на [127.0.0.1:8000](http://127.0.0.1:8000/).
 
 В новом шаблоне проекта `app.py` лежит в корне, настройки находятся в `core/conf.py`, а `templates/index.html` и папки `content/css`, `content/js` и `content/img` изначально пустые.
 

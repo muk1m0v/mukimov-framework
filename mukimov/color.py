@@ -21,6 +21,8 @@
 
 from __future__ import annotations
 
+import sys
+
 __all__ = [
     "red",
     "green",
@@ -35,6 +37,16 @@ __all__ = [
     "white",
     "gold",
 ]
+
+
+def _ensure_utf8() -> None:
+    """Allow localized console output when Windows uses a legacy encoding."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
 
 RESET = "\x1b[0m"
 

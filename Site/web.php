@@ -6,7 +6,7 @@ docsStart('web', 'Модули', ['setup' => 'Первый сайт', 'static' =
 ?>
 <section id="setup">
     <h2>Первый сайт</h2>
-    <p>Создай проект командой <code>mukimov-startweb my_site</code> или <code>python -m mukimov startweb my_site</code>. В версии 0.3.6 генератор оставляет <code>app.py</code> в корне сайта, записывает настройки в <code>core/conf.py</code> и создаёт пустой <code>templates/index.html</code>.</p>
+    <p>В корне проекта запусти <code>python -m mukimov startweb</code>, затем <code>python app.py</code>. Генератор создаёт <code>app.py</code> в текущей папке, настройки в <code>core/conf.py</code> и пустой <code>templates/index.html</code>, если своего шаблона ещё нет.</p>
     <?php snippet('Python · core/conf.py', <<<'PY'
 from mukimov.dirs import BASE_DIR
 
@@ -39,7 +39,7 @@ HTML);
     <?php snippet('Вывод при запуске', <<<'TEXT'
 Сервер запущен: http://127.0.0.1:8017
 Чтобы остановить сервер, используйте комбинацию: Ctrl + C
-Mukimov Web Control - v0.3.6
+Mukimov Web Control - v0.3.7
 TEXT); ?>
 </section>
 <section id="static">

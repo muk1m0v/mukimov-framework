@@ -27,6 +27,7 @@ import shutil
 import sysconfig
 from pathlib import Path
 
+from .color import _ensure_utf8
 from .update import (
     UpdateCheckError,
     _read_cache,
@@ -37,16 +38,6 @@ from .update import (
 )
 
 __all__ = ["main"]
-
-
-def _ensure_utf8() -> None:
-    """Make stdout/stderr UTF-8 capable (Windows cp1252 can't print ⚠/→/ru)."""
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            if hasattr(stream, "reconfigure"):
-                stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
 
 
 def _print_version() -> int:
@@ -77,7 +68,7 @@ def _print_help() -> int:
         "  mukimov update\n"
         "  mukimov doctor\n"
         "  mukimov example\n"
-        "  mukimov startweb my_site\n"
+        "  mukimov startweb\n"
         "  python -m mukimov --version\n"
     )
     _maybe_notify()
@@ -108,7 +99,7 @@ def _cmd_update() -> int:
         return 0
 
     # Upgrade with the SAME interpreter that runs mukimov.
-    cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "mukimov"]
+    cmd = [sys.executable, "-m", "pip", "install", "--upgrade", f"mukimov=={latest}"]
     try:
         proc = subprocess.run(
             cmd,
@@ -131,7 +122,8 @@ def _cmd_update() -> int:
 
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "").strip().splitlines()
-        detail = err[-1] if err else "pip failed"
+        detail = next((line for line in reversed(err) if line.startswith("ERROR:")),
+                      err[-1] if err else "pip failed")
         sys.stderr.write(
             f"Error: could not upgrade mukimov: {detail}\n"
             "Проверьте подключение к интернету и попробуйте позже.\n"
@@ -139,13 +131,18 @@ def _cmd_update() -> int:
         return 1
 
     # Re-read the installed version after upgrade.
-    new_version = latest
     try:
         from importlib.metadata import version as _dist_version
 
         new_version = str(_dist_version("mukimov"))
     except Exception:
-        pass
+        sys.stderr.write("Error: could not verify the installed mukimov version after running pip.\n")
+        return 1
+    if not is_newer(new_version, current) or is_newer(latest, new_version):
+        sys.stderr.write(
+            f"Error: expected mukimov {latest}, but the installed version is {new_version}.\n"
+        )
+        return 1
     sys.stdout.write(f"Updated mukimov: {current} → {new_version}\n")
     return 0
 

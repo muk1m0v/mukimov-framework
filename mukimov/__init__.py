@@ -4,5 +4,5 @@ from .stars import stars
 
 from . import env
 
-__version__ = "0.3.6"
+__version__ = "0.3.7"
 __all__ = ["stars", "env"]

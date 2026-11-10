@@ -20,7 +20,7 @@ import traceback
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 from . import __version__
-from .color import blue, green, red
+from .color import _ensure_utf8, blue, green, red
 from .dirs import _load_settings
 from ._web_content import asset_parts, load_content
 from ._web_reload import BIND_FAILED, WORKER_ENV, supervise
@@ -360,6 +360,7 @@ footer {{ margin-top: 2rem; border-top: 1px solid #ddd; padding-top: 1rem; }}
 
     def run(self, *, port: int = 8000, reload: bool = True) -> None:
         """Run the development server and restart after Python source changes."""
+        _ensure_utf8()
         if reload and supervise(self._root):
             return
         host = "127.0.0.1"
