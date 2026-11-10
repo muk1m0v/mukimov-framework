@@ -43,7 +43,14 @@ class TestUnixTerminal(unittest.TestCase):
                     os.write(master, keys)
                     output, errors = proc.communicate(timeout=5)
                     self.assertEqual(proc.returncode, 0, errors.decode("utf-8"))
-                    self.assertEqual(termios.tcgetattr(slave), original)
+                    restored = termios.tcgetattr(slave)
+                    if sys.platform == "darwin":
+                        # Darwin sets PENDIN when canonical mode is restored.
+                        # The kernel clears it when it processes pending input.
+                        pending = getattr(termios, "PENDIN", 0x20000000)
+                        restored[3] &= ~pending
+                        original[3] &= ~pending
+                    self.assertEqual(restored, original)
                     return output.decode("utf-8")
                 finally:
                     if proc.poll() is None:
