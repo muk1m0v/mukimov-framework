@@ -1,0 +1,9 @@
+{% extends "index.html" %}
+{% block heading %}<h1>Приветствие</h1>{% endblock %}
+{% block form_result %}
+    {$ if title $}
+        <h2 class="form-result">{{ title }}</h2>
+    {$ else $}
+        <p class="muted">Введи имя и нажми «Поздороваться».</p>
+    {$ overif $}
+{% endblock %}

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mukimov"
+version = "0.3.5"
+description = "Tools for small websites, password hashing, terminal output and environment settings"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "mukimov", email = "mukimov.shop@gmail.com" }]
+keywords = ["password", "getpass", "stars", "prompt", "cli"]
+dependencies = [
+  "packaging>=21",
+  "markdown-it-py>=3.0.0",
+  "wcwidth>=0.2.5",
+  "python-dotenv>=1.0.0",
+  "Jinja2>=3.1.6",
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Security",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/muk1m0v/mukimov-framework"
+Documentation = "https://mukimov.click/"
+
+[project.scripts]
+mukimov = "mukimov.cli:main"
+mukimov-startweb = "mukimov._startweb:main"
+
+[tool.setuptools.packages.find]
+include = ["mukimov*"]
+
+[tool.setuptools.package-data]
+mukimov = ["py.typed", "example.env"]

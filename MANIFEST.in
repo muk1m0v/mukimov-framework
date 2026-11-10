@@ -1,0 +1,7 @@
+exclude .env
+exclude .env.*
+exclude .pypirc
+include CHANGELOG.md
+recursive-include example/web *.py *.md *.html *.css *.js *.svg settings.env
+global-exclude *.pyc
+global-exclude __pycache__

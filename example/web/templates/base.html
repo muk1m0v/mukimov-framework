@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title | default("Приветствие") }} · mukimov.web</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/">
+            <img src="/static/img/logo.svg" alt="" width="32" height="32">
+            <span>mukimov.web</span>
+        </a>
+        <nav aria-label="Навигация">
+            <a href="/">Главная</a>
+            <a href="/about/">О примере</a>
+        </nav>
+    </header>
+    <main class="page">
+        {% block content %}{% endblock %}
+    </main>
+    <footer>Демонстрационный сайт на Python и HTML</footer>
+</body>
+</html>

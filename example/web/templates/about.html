@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+    <p class="eyebrow">МАРШРУТ /ABOUT/</p>
+    <h1>О примере</h1>
+    <p>Python обрабатывает адреса и отправку формы. Общий HTML-шаблон подключает CSS, JavaScript и SVG из папки <code>static/</code>.</p>
+    <p>На этой вложенной странице используются те же файлы оформления, что и на главной.</p>
+    <ul>
+        {$ for asset in assets $}
+            <li>{{ asset }}</li>
+        {$ overfor $}
+    </ul>
+    <a href="/">К форме →</a>
+{% endblock %}

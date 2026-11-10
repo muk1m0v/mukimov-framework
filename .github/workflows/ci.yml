@@ -1,0 +1,86 @@
+name: Test package
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Check release tag
+        if: github.ref_type == 'tag'
+        run: python -c 'import os, pathlib, tomllib; version = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]; assert os.environ["GITHUB_REF_NAME"] == "v" + version, version'
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+  test:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ['3.14']
+        include:
+          - os: ubuntu-24.04
+            python: '3.8'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Check the wheel in a fresh environment
+        shell: bash
+        run: |
+          wheel="$(python -c 'from pathlib import Path; print(next(Path("dist").glob("*.whl")).resolve().as_posix())')"
+          python -m venv .venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          pushd "$RUNNER_TEMP"
+          python -m pip install "$wheel"
+          python -m pip check
+          python -c 'from importlib.resources import is_resource; from mukimov import stars, env; from mukimov.color import green; assert callable(stars) and is_resource("mukimov", "py.typed")'
+          python -c 'from mukimov.password import hash_password, high, verify_password; stored = hash_password("wheel-smoke", level=high); assert len(stored) == 255 and verify_password("wheel-smoke", stored)'
+          python -c 'from mukimov.web import App; assert callable(App())'
+          python -m mukimov --help
+          python -m mukimov doctor
+          example_output="$(printf '5\n0\n' | mukimov example)"
+          [[ "$example_output" == *8080* ]]
+          python -B "$GITHUB_WORKSPACE/.github/smoke_web.py"
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from mukimov import env
+          from mukimov.text import markdown
+
+          assert markdown.render("**hello**")
+          with TemporaryDirectory() as folder:
+              path = Path(folder) / ".env"
+              path.write_text("MUKIMOV_WHEEL_SMOKE=ready\n", encoding="utf-8")
+              env.load(path, override=True)
+              assert env.required("MUKIMOV_WHEEL_SMOKE") == "ready"
+          PY
+          popd
+          python -B -m unittest discover -s tests -q

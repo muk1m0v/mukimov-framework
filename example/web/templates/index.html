@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+    <p class="eyebrow">ПРИМЕР · PYTHON + HTML</p>
+    {% block heading %}<h1>{{ title }}</h1>{% endblock %}
+    <p>Отправь имя через форму. Python обработает запрос и подставит имя в HTML.</p>
+
+    <form class="card" action="/hello" method="post">
+        <label for="name">Твоё имя</label>
+        <div class="form-row">
+            <input id="name" name="name" maxlength="80" placeholder="Например, Али">
+            <button type="submit">Поздороваться</button>
+        </div>
+        <p id="name-count" class="muted" hidden></p>
+        {% block form_result %}{% endblock %}
+    </form>
+
+    <p>Отправь пустую форму для проверки 400 или <a href="/missing">открой отсутствующую страницу</a> для проверки 404.</p>
+{% endblock %}
