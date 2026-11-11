@@ -10,9 +10,10 @@ from socketserver import TCPServer
 from typing import NamedTuple
 from typing import NoReturn
 from urllib.parse import parse_qsl
-from wsgiref.simple_server import WSGIServer, make_server
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 import mimetypes
 import os
+import re
 import socket
 import sys
 import traceback
@@ -20,7 +21,7 @@ import traceback
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 from . import __version__
-from .color import _ensure_utf8, blue, green, red
+from .color import _ensure_utf8, blue, cyan, green, orange, purple, red, white, yellow
 from .dirs import _load_settings
 from ._web_content import asset_parts, load_content
 from ._web_reload import BIND_FAILED, WORKER_ENV, supervise
@@ -32,6 +33,28 @@ _ASSET_TYPES = {".css": "text/css", ".js": "text/javascript", ".mjs": "text/java
 _HTML = "text/html; charset=utf-8"
 _MAX_FORM_BYTES = 1024 * 1024
 _DEFAULT_METHODS = ("GET",)
+
+
+class _RequestHandler(WSGIRequestHandler):
+    def log_request(self, code="-", size="-") -> None:
+        if not self.server.get_app()._show_server_status:
+            return
+        colors = {0: white, 1: white, 2: green, 3: blue, 4: yellow, 5: red}
+        status = str(code)
+        category = int(status) // 100 if status.isdecimal() else -1
+        status = colors.get(category, white)(status)
+        methods = {
+            "GET": green, "POST": orange, "HEAD": blue, "PUT": purple,
+            "PATCH": cyan, "DELETE": red, "OPTIONS": white,
+        }
+        # Escape untrusted control characters before adding our ANSI colors.
+        line = re.sub(r"[\x00-\x1f\x7f-\x9f]", lambda match: f"\\x{ord(match[0]):02x}",
+                      self.requestline)
+        method, separator, rest = line.partition(" ")
+        line = methods.get(method, white)(method) + separator + rest if method else line
+        sys.stderr.write(
+            f'{self.address_string()} - - [{self.log_date_time_string()}] "{line}" {status} {size}\n'
+        )
 
 
 class _LocalServer(WSGIServer):
@@ -178,6 +201,9 @@ class App:
         self._debug = config.get("DEBUG", settings is not None)
         if type(self._debug) is not bool:
             raise ValueError("DEBUG in conf.py must be True or False.")
+        self._show_server_status = config.get("SHOW_SERVER_STATUS_IN_TERMINAL", True)
+        if type(self._show_server_status) is not bool:
+            raise ValueError("SHOW_SERVER_STATUS_IN_TERMINAL in conf.py must be True or False.")
         template_dirs = config.get("HTML_TEMPLATES", [root / "templates"])
         if not isinstance(template_dirs, (list, tuple)) or not all(
             isinstance(path, (str, os.PathLike)) for path in template_dirs
@@ -185,7 +211,7 @@ class App:
             raise ValueError("HTML_TEMPLATES in conf.py must be a list of paths.")
         self._templates = Environment(
             loader=FileSystemLoader([root / path for path in template_dirs]),
-            autoescape=True, extensions=[ControlTags]
+            autoescape=True, extensions=[ControlTags], cache_size=0 if self._debug else 400
         )
         if aliases is not None:
             self._templates.globals["mukimov_asset_url"] = aliases.__getitem__
@@ -365,7 +391,8 @@ footer {{ margin-top: 2rem; border-top: 1px solid #ddd; padding-top: 1rem; }}
             return
         host = "127.0.0.1"
         try:
-            server = make_server(host, port, self, server_class=_LocalServer)
+            server = make_server(host, port, self, server_class=_LocalServer,
+                                 handler_class=_RequestHandler)
         except OSError as error:
             print(red(f"Не удалось запустить сервер на порту {port}: {error}"),
                   file=sys.stderr, flush=True)

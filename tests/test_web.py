@@ -10,7 +10,82 @@ from wsgiref.util import setup_testing_defaults
 
 from mukimov import __version__
 from mukimov._startweb import main as startweb
-from mukimov.web import App, abort, redirect, render_template, request
+from mukimov.web import App, _LocalServer, _RequestHandler, abort, redirect, render_template, request
+
+
+class TestRequestLog(TestCase):
+    def test_status_color_boundaries_and_method_colors(self):
+        handler = _RequestHandler.__new__(_RequestHandler)
+        handler.server = MagicMock()
+        handler.server.get_app.return_value._show_server_status = True
+        handler.client_address = ("127.0.0.1", 12345)
+        statuses = (
+            (0, "97"), (199, "97"), (200, "92"), (299, "92"),
+            (300, "94"), (399, "94"), (400, "93"), (499, "93"),
+            (500, "91"), (599, "91"),
+        )
+        for method, color in (("GET", "92"), ("POST", "38;5;208")):
+            handler.requestline = f"{method} / HTTP/1.1"
+            for status, status_color in statuses:
+                with self.subTest(method=method, status=status), redirect_stderr(StringIO()) as log:
+                    handler.log_request(status, 700)
+                    self.assertIn(f"\x1b[{color}m{method}\x1b[0m / HTTP/1.1", log.getvalue())
+                    self.assertIn(f"\x1b[{status_color}m{status}\x1b[0m 700", log.getvalue())
+
+    def test_request_cannot_inject_terminal_escape_sequences(self):
+        handler = _RequestHandler.__new__(_RequestHandler)
+        handler.server = MagicMock()
+        handler.server.get_app.return_value._show_server_status = True
+        handler.client_address = ("127.0.0.1", 12345)
+        handler.requestline = "GET /\x1b[2J HTTP/1.1"
+        with redirect_stderr(StringIO()) as log:
+            handler.log_request(404, 0)
+        self.assertNotIn("\x1b[2J", log.getvalue())
+        self.assertIn(r"/\x1b[2J", log.getvalue())
+
+    def test_setting_controls_real_http_request_logs(self):
+        from http.client import HTTPConnection
+        from threading import Thread
+        from wsgiref.simple_server import make_server
+
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            for setting, expected in (("", True), ("True", True), ("False", False)):
+                (root / "conf.py").write_text(
+                    f"SHOW_SERVER_STATUS_IN_TERMINAL = {setting}\n" if setting else "",
+                    encoding="utf-8",
+                )
+                app = App(root=root)
+                app.route("/")(lambda: "Hello")
+                with self.subTest(setting=setting), redirect_stderr(StringIO()) as log:
+                    with make_server("127.0.0.1", 0, app, server_class=_LocalServer,
+                                     handler_class=_RequestHandler) as server:
+                        server.timeout = 5
+                        worker = Thread(target=server.handle_request, daemon=True)
+                        worker.start()
+                        client = HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+                        try:
+                            client.request("GET", "/")
+                            response = client.getresponse()
+                            self.assertEqual((response.status, response.read()), (200, b"Hello"))
+                        finally:
+                            client.close()
+                            worker.join(timeout=6)
+                        self.assertFalse(worker.is_alive())
+                    if expected:
+                        self.assertIn("\x1b[92mGET\x1b[0m", log.getvalue())
+                        self.assertIn("\x1b[92m200\x1b[0m", log.getvalue())
+                    else:
+                        self.assertEqual(log.getvalue(), "")
+
+    def test_setting_requires_a_boolean(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "conf.py").write_text(
+                'SHOW_SERVER_STATUS_IN_TERMINAL = "False"\n', encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "SHOW_SERVER_STATUS_IN_TERMINAL"):
+                App(root=root)
 
 
 class TestWeb(TestCase):
@@ -328,7 +403,8 @@ class TestWeb(TestCase):
                      patch("mukimov.web.make_server", return_value=server) as start, \
                      redirect_stdout(StringIO()) as output:
                     self.app.run(port=9000, reload=False)
-                start.assert_called_once_with("127.0.0.1", 9000, self.app, server_class=ANY)
+                start.assert_called_once_with("127.0.0.1", 9000, self.app,
+                                              server_class=ANY, handler_class=_RequestHandler)
                 self.assertEqual(output.getvalue().splitlines(), [
                     "\x1b[92mСервер запущен: http://127.0.0.1:9000\x1b[0m",
                     f"\x1b[94mЧтобы остановить сервер, используйте комбинацию: {shortcut}\x1b[0m",
@@ -341,7 +417,8 @@ class TestWeb(TestCase):
              redirect_stdout(StringIO()) as output, redirect_stderr(StringIO()) as errors:
             with self.assertRaises(SystemExit) as caught:
                 self.app.run(reload=False)
-        start.assert_called_once_with("127.0.0.1", 8000, self.app, server_class=ANY)
+        start.assert_called_once_with("127.0.0.1", 8000, self.app,
+                                      server_class=ANY, handler_class=_RequestHandler)
         self.assertEqual(caught.exception.code, 1)
         self.assertEqual(output.getvalue(), "")
         self.assertIn("8000", errors.getvalue())

@@ -11,9 +11,11 @@ docsStart('web', 'Модули', ['setup' => 'Первый сайт', 'static' =
 from mukimov.dirs import BASE_DIR
 
 DEBUG = True
+SHOW_SERVER_STATUS_IN_TERMINAL = True
 HTML_TEMPLATES = [BASE_DIR / "templates"]
 PY); ?>
     <p>Пока главная пустая, <code>DEBUG = True</code> показывает встроенную стартовую страницу. Стандартные страницы ошибок тоже сообщают о включённом режиме. Чтобы убрать эти подсказки, укажи <code>DEBUG = False</code>.</p>
+    <p><code>SHOW_SERVER_STATUS_IN_TERMINAL = True</code> включает цветные строки HTTP-запросов. Значение <code>False</code> скрывает их. Сообщения запуска и ошибки приложения остаются в терминале. Комментарии в сгенерированном <code>core/conf.py</code> содержат примеры для каждого блока настроек.</p>
     <?php snippet('Терминал', 'python -m pip install --upgrade mukimov');
     snippet('Python · app.py', <<<'PY'
 from mukimov.web import App, render_template
@@ -39,7 +41,7 @@ HTML);
     <?php snippet('Вывод при запуске', <<<'TEXT'
 Сервер запущен: http://127.0.0.1:8017
 Чтобы остановить сервер, используйте комбинацию: Ctrl + C
-Mukimov Web Control - v0.3.7
+Mukimov Web Control - v0.3.8
 TEXT); ?>
 </section>
 <section id="static">
